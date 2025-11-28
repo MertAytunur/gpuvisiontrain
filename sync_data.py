@@ -14,6 +14,13 @@ from pathlib import Path
 from typing import Optional, List
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # dotenv not installed, use system env vars
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
@@ -34,19 +41,59 @@ class StorageProvider:
         raise NotImplementedError
 
 
+def build_gcs_credentials_from_env() -> Optional[str]:
+    """Build GCS credentials JSON from environment variables and save to temp file."""
+    import json
+    import tempfile
+
+    # Check if credentials are in env vars
+    project_id = os.environ.get('GCS_PROJECT_ID')
+    private_key = os.environ.get('GCS_PRIVATE_KEY')
+    client_email = os.environ.get('GCS_CLIENT_EMAIL')
+
+    if not all([project_id, private_key, client_email]):
+        return None
+
+    credentials = {
+        "type": os.environ.get('GCS_TYPE', 'service_account'),
+        "project_id": project_id,
+        "private_key_id": os.environ.get('GCS_PRIVATE_KEY_ID', ''),
+        "private_key": private_key.replace('\\n', '\n'),
+        "client_email": client_email,
+        "client_id": os.environ.get('GCS_CLIENT_ID', ''),
+        "auth_uri": os.environ.get('GCS_AUTH_URI', 'https://accounts.google.com/o/oauth2/auth'),
+        "token_uri": os.environ.get('GCS_TOKEN_URI', 'https://oauth2.googleapis.com/token'),
+        "auth_provider_x509_cert_url": os.environ.get('GCS_AUTH_PROVIDER_CERT_URL', 'https://www.googleapis.com/oauth2/v1/certs'),
+        "client_x509_cert_url": os.environ.get('GCS_CLIENT_CERT_URL', ''),
+        "universe_domain": "googleapis.com"
+    }
+
+    # Write to temp file
+    temp_file = tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False)
+    json.dump(credentials, temp_file)
+    temp_file.close()
+
+    logger.info(f"Built credentials from env vars, saved to {temp_file.name}")
+    return temp_file.name
+
+
 class GCSProvider(StorageProvider):
     """Google Cloud Storage provider."""
 
     def __init__(self, project_id: Optional[str] = None, key_file: Optional[str] = None):
-        self.project_id = project_id
+        self.project_id = project_id or os.environ.get('GCS_PROJECT_ID')
         self.key_file = key_file
         self._setup_auth()
 
     def _setup_auth(self):
         """Setup GCS authentication."""
+        # Try to build credentials from env vars if no key file provided
+        if not self.key_file:
+            self.key_file = build_gcs_credentials_from_env()
+
         if self.key_file:
             os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = self.key_file
-            logger.info(f"Using service account key: {self.key_file}")
+            logger.info(f"Using service account credentials")
 
             # Activate service account if gcloud is available
             try:
@@ -221,6 +268,13 @@ def main():
     """CLI for data sync operations."""
     parser = argparse.ArgumentParser(description='Sync data between cloud storage and local disk')
 
+    # Get defaults from environment variables
+    default_bucket = os.environ.get('GCS_BUCKET', '')
+    default_dataset = os.environ.get('DATASET_NAME', 'dataset-v1')
+    default_local = os.environ.get('LOCAL_DATA_DIR', '/data/dataset')
+    default_key = os.environ.get('GCS_KEY_FILE')
+    default_project = os.environ.get('GCS_PROJECT_ID')
+
     parser.add_argument(
         'action',
         choices=['download', 'upload', 'sync'],
@@ -236,26 +290,26 @@ def main():
     parser.add_argument(
         '--remote',
         type=str,
-        required=True,
-        help='Remote path (e.g., gs://bucket/path or https://account.blob.core.windows.net/container/path)'
+        default=f"{default_bucket}/{default_dataset}" if default_bucket else None,
+        help='Remote path (e.g., gs://bucket/path). Default from GCS_BUCKET/DATASET_NAME env vars'
     )
     parser.add_argument(
         '--local',
         type=str,
-        required=True,
-        help='Local path'
+        default=f"{default_local}/{default_dataset}",
+        help='Local path. Default from LOCAL_DATA_DIR/DATASET_NAME env vars'
     )
     parser.add_argument(
         '--key-file',
         type=str,
-        default=None,
-        help='Path to service account key file (GCS)'
+        default=default_key,
+        help='Path to service account key file (GCS). Default from GCS_KEY_FILE env var'
     )
     parser.add_argument(
         '--project',
         type=str,
-        default=None,
-        help='GCP project ID'
+        default=default_project,
+        help='GCP project ID. Default from GCS_PROJECT_ID env var'
     )
     parser.add_argument(
         '--force',
@@ -264,6 +318,10 @@ def main():
     )
 
     args = parser.parse_args()
+
+    # Validate remote path
+    if not args.remote:
+        parser.error("--remote is required. Set GCS_BUCKET env var or provide --remote")
 
     # Setup provider
     provider_kwargs = {}

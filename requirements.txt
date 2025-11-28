@@ -11,6 +11,7 @@ ultralytics>=8.0.0
 pyyaml>=6.0
 numpy>=1.24.0
 pillow>=9.0.0
+python-dotenv>=1.0.0
 
 # Logging and monitoring (optional)
 tensorboard>=2.12.0

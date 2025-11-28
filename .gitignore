@@ -60,12 +60,14 @@ wandb/
 
 # Secrets and credentials
 .env
-.env.*
+.env.local
 *.json
 !package.json
+!.env.example
 gcs-sa-key.json
 *-key.json
 credentials/
+storage-*.json
 
 # OS files
 .DS_Store

@@ -13,6 +13,13 @@ from pathlib import Path
 from datetime import datetime
 from typing import Optional, Dict, Any
 
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # dotenv not installed, use system env vars
+
 # Setup logging
 logging.basicConfig(
     level=logging.INFO,
@@ -32,11 +39,16 @@ def parse_args() -> argparse.Namespace:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
 
+    # Get defaults from environment variables
+    default_local = os.environ.get('LOCAL_DATA_DIR', '/data/dataset')
+    default_dataset = os.environ.get('DATASET_NAME', 'dataset-v1')
+    default_data_root = f"{default_local}/{default_dataset}"
+
     # Data arguments
     parser.add_argument(
         '--data_root',
         type=str,
-        required=True,
+        default=os.environ.get('DATA_ROOT', default_data_root),
         help='Path to dataset root directory (containing data.yaml)'
     )
     parser.add_argument(
@@ -50,7 +62,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         '--model',
         type=str,
-        default='yolov8n.pt',
+        default=os.environ.get('MODEL', 'yolov8n.pt'),
         help='Model to use (yolov8n/s/m/l/x.pt or path to custom weights)'
     )
     parser.add_argument(
@@ -64,25 +76,25 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         '--epochs',
         type=int,
-        default=100,
+        default=int(os.environ.get('EPOCHS', 100)),
         help='Number of training epochs'
     )
     parser.add_argument(
         '--batch_size',
         type=int,
-        default=16,
+        default=int(os.environ.get('BATCH_SIZE', 16)),
         help='Batch size per GPU'
     )
     parser.add_argument(
         '--imgsz',
         type=int,
-        default=640,
+        default=int(os.environ.get('IMGSZ', 640)),
         help='Image size for training'
     )
     parser.add_argument(
         '--workers',
         type=int,
-        default=8,
+        default=int(os.environ.get('WORKERS', 8)),
         help='Number of dataloader workers'
     )
 
@@ -104,7 +116,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         '--device',
         type=str,
-        default='0',
+        default=os.environ.get('DEVICE', '0'),
         help='Device to use (e.g., 0 or 0,1,2,3 for multi-GPU)'
     )
     parser.add_argument(
