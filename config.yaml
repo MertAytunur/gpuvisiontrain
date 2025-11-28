@@ -1,0 +1,80 @@
+# YOLO Training Configuration
+# Copy this file and customize for your setup
+
+# Run identification
+run_name: null  # Auto-generated if not set
+
+# Storage configuration
+storage:
+  provider: gcs  # gcs or azure
+
+  # GCS settings
+  project_id: your-project-id
+  key_file: /home/ubuntu/gcs-sa-key.json  # Path on GPU server
+
+  # Remote paths
+  remote_dataset: gs://my-vision-datasets/dataset-v1
+  remote_outputs: gs://my-vision-datasets/outputs
+
+  # Local paths (on GPU server)
+  local_dataset: /data/dataset/dataset-v1
+
+# Training configuration
+training:
+  # Model
+  model: yolov8n.pt  # yolov8n/s/m/l/x.pt or path to custom weights
+  resume: null  # Path to checkpoint to resume from
+
+  # Data
+  data_root: /data/dataset/dataset-v1  # Will be set automatically if using sync
+  data_yaml: data.yaml
+
+  # Training parameters
+  epochs: 100
+  batch_size: 16  # Per GPU
+  imgsz: 640
+  workers: 8
+
+  # Hardware
+  device: '0'  # '0' for single GPU, '0,1,2,3' for multi-GPU
+
+  # Optimization
+  optimizer: auto  # SGD, Adam, AdamW, auto
+  lr0: 0.01
+  lrf: 0.01
+  amp: true  # Automatic Mixed Precision
+
+  # Checkpointing
+  patience: 50  # Early stopping patience
+  save_period: 10  # Save checkpoint every N epochs
+
+  # Performance
+  cache: false  # Cache images in RAM (requires enough memory)
+
+  # Output
+  output_dir: ./outputs
+
+# Environment-specific overrides
+# Uncomment and modify for different providers
+
+# fal_compute:
+#   storage:
+#     key_file: /home/ubuntu/gcs-sa-key.json
+#     local_dataset: /data/dataset/dataset-v1
+#   training:
+#     device: '0'
+#     batch_size: 32  # H100 can handle larger batches
+
+# vastai:
+#   storage:
+#     key_file: /root/gcs-sa-key.json
+#     local_dataset: /workspace/data/dataset-v1
+#   training:
+#     device: '0,1'  # Multi-GPU if available
+#     batch_size: 64
+
+# azure_ml:
+#   storage:
+#     provider: azure
+#     remote_dataset: https://account.blob.core.windows.net/datasets/dataset-v1
+#     remote_outputs: https://account.blob.core.windows.net/outputs

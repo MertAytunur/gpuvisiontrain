@@ -1,0 +1,77 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Training outputs (large files)
+outputs/
+runs/
+weights/
+*.pt
+*.pth
+*.onnx
+!yolov8*.pt
+
+# Datasets (stored in GCS, not git)
+datasets/
+data/
+*.zip
+*.tar.gz
+*.tar
+
+# Logs
+*.log
+logs/
+tensorboard/
+wandb/
+
+# Secrets and credentials
+.env
+.env.*
+*.json
+!package.json
+gcs-sa-key.json
+*-key.json
+credentials/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+*.tmp
